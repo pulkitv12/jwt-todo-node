@@ -4,8 +4,9 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require('./model/user');
-const user = require("./model/user");
+const ToDo = require("./model/todo");
 const app = express();
+const {verifyToken} = require('./middleware/authenticateUser');
 
 app.use(express.json());
 
@@ -77,6 +78,78 @@ app.post('/login', async (req, res) => {
             });
         }
         return res.status(400).send({message:"Invalid credentials"})
+    } catch (error) {
+        console.log(error);
+        return res.status(500).send({message:"Internal server error. Please try again later"});
+    }
+});
+
+app.post("/todo", verifyToken, async (req, res) => {
+    try {
+        if(!req.body.item) {
+            return res.status(400).send({message:"Invalid input"});
+        }
+        const createdTodo = await ToDo.create({item: req.body.item});
+    
+        return res.status(201).send({
+            success: true,
+            todo: createdTodo
+        });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).send({message:"Internal server error. Please try again later"});
+    }
+});
+
+app.get('/todo', verifyToken, async (req, res) => {
+    try {
+        const todoList = await ToDo.find();
+    
+        return res.status(200).send({
+            success: true,
+            todo: todoList
+        });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).send({message:"Internal server error. Please try again later"});
+    }
+})
+
+app.put('/todo', verifyToken, async (req, res) => {
+    try {
+        if(!req.body.todoid) {
+            return res.status(400).send({message:"Invalid input"});
+        }
+        const updatedTodo = await ToDo.findByIdAndUpdate(req.body.todoid, {item: req.body.item});
+        if(!updatedTodo) {
+            return res.status(400).send({message:"Bad request. Unable to update item"});
+        }
+        return res.status(200).send({
+            success: true,
+            message:"Item updated successfully",
+            item: updatedTodo
+        });
+        
+    } catch (error) {
+        console.log(error);
+        return res.status(500).send({message:"Internal server error. Please try again later"});
+    }
+})
+
+app.delete('/todo', verifyToken, async (req, res) => {
+    try {
+        if(!req.body.todoid) {
+            return res.status(400).send({message:"Invalid input"});
+        }
+        const deletedTodo = await ToDo.findByIdAndDelete(req.body.todoid);
+        if(!deletedTodo) {
+            return res.status(400).send({message:"Bad request. Unable to delete item"});
+        }
+        return res.status(200).send({
+            success: true,
+            message:"Item deleted successfully",
+            item: deletedTodo
+        });
     } catch (error) {
         console.log(error);
         return res.status(500).send({message:"Internal server error. Please try again later"});
